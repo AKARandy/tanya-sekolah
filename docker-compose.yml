@@ -1,0 +1,12 @@
+services:
+  assistant:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persist the built artifacts across container restarts.
+      - ./schools.db:/workspace/schools.db
+      - ./chroma_db:/workspace/chroma_db
+      - ./models:/workspace/models

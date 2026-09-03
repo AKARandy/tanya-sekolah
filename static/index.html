@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sekolah Assistant — Surabaya &amp; Sidoarjo</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --panel2: #1d2639; --border: #2a3550;
+    --text: #e8ecf5; --muted: #8b97b0; --accent: #4f8cff; --accent2: #35c48d;
+    --sql: #4f8cff; --sem: #b07cff; --pred: #35c48d;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    padding: 14px 22px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  header h1 { font-size: 17px; font-weight: 650; }
+  header .sub { color: var(--muted); font-size: 12.5px; }
+  #chat { flex: 1; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 78%; padding: 12px 15px; border-radius: 12px; line-height: 1.55; font-size: 14px; white-space: pre-wrap; }
+  .user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .badge {
+    display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+    padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; text-transform: uppercase;
+  }
+  .badge.sql { background: #1a2c52; color: var(--sql); }
+  .badge.semantic { background: #2a1f4d; color: var(--sem); }
+  .badge.predict { background: #143628; color: var(--pred); }
+  .sql-line { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--muted); margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--border); word-break: break-all; }
+  .note { color: var(--muted); font-size: 11.5px; margin-top: 6px; }
+  form { display: flex; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border); background: var(--panel2); }
+  input {
+    flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); padding: 12px 14px; font-size: 14px; outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+    padding: 12px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: wait; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 22px 12px; }
+  .chip {
+    background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 20px; padding: 6px 13px; font-size: 12.5px; cursor: pointer;
+  }
+  .chip:hover { color: var(--text); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏫 Sekolah Assistant</h1>
+  <span class="sub">Q&amp;A over 2,269 schools — SQL · vector RAG · CatBoost SPP prediction</span>
+</header>
+<div id="chat"></div>
+<div class="chips" id="chips"></div>
+<form id="askForm" autocomplete="off">
+  <input id="q" placeholder="Tanya apa saja… (Indonesian or English)" maxlength="500">
+  <button id="send">Send</button>
+</form>
+
+<script>
+const chat = document.getElementById('chat');
+const chips = document.getElementById('chips');
+
+const EXAMPLES = [
+  'Berapa banyak SMA swasta berakreditasi A di Surabaya?',
+  'Sekolah swasta berbasis agama di Surabaya Timur dengan SPP murah',
+  'Berapa SPP SMK Krian 1 Sidoarjo?',
+  'Rata-rata SPP per jenjang di Sidoarjo?',
+  'Sekolah dengan peserta didik terbanyak'
+];
+EXAMPLES.forEach(t => {
+  const c = document.createElement('div');
+  c.className = 'chip'; c.textContent = t;
+  c.onclick = () => { document.getElementById('q').value = t; document.getElementById('askForm').requestSubmit(); };
+  chips.appendChild(c);
+});
+
+function addMsg(cls, html) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.innerHTML = html;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+
+const ROUTE_LABEL = { sql: 'SQL route', semantic: 'vector RAG', predict: 'SPP prediction' };
+
+document.getElementById('askForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  addMsg('user', q);
+  document.getElementById('q').value = '';
+  const btn = document.getElementById('send');
+  btn.disabled = true;
+  const thinking = addMsg('bot', '…');
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    let html = `<span class="badge ${data.route}">${ROUTE_LABEL[data.route] || data.route}</span>` + data.answer;
+    if (data.sql) html += `<div class="sql-line">${data.sql}</div>`;
+    if (data.note) html += `<div class="note">router note: ${data.note}</div>`;
+    thinking.innerHTML = html;
+  } catch (err) {
+    thinking.innerHTML = `⚠️ ${err.message}`;
+  } finally {
+    btn.disabled = false;
+    chat.scrollTop = chat.scrollHeight;
+  }
+};
+</script>
+</body>
+</html>
