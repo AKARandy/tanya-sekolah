@@ -10,7 +10,7 @@ A complete data-to-LLM pipeline: government portals → Selenium scraping → SQ
 
 ## What is this project?
 
-Indonesian school information is scattered across four separate government portals (Dapodik, data.kemendikdasmen, school profiles, the yayasan/foundation registry) with no unified API — and the single most useful number for parents, **the monthly tuition (SPP)**, is almost never published online.
+Indonesian school information is scattered across many website, among these are the four separate government portals that is but not limited to (Dapodik, data.kemendikdasmen, school profiles, the yayasan/foundation registry) with no unified API, and one of the most useful number for parents, **the monthly tuition (SPP)**, is almost never published online.
 
 This project solves both halves of that problem:
 
@@ -47,13 +47,13 @@ user question → [Router LLM] ─────┤                               
                                                         SPP estimate
 ```
 
-**Router** (`app/router_agent.py`) — one fast LLM call classifies the question into `sql | semantic | predict`. If the router or any backend fails, the app degrades to the semantic route and still returns raw evidence instead of an error.
+**Router** (`app/router_agent.py`): one fast LLM call classifies the question into `sql | semantic | predict`. If the router or any backend fails, the app degrades to the semantic route and still returns raw evidence instead of an error.
 
-**SQL route** (`app/sql_agent.py`) — the LLM writes SQL, but the *application* enforces the security boundary: the SQLite connection is opened `mode=ro` (read-only at the file level), only single SELECT statements pass validation (no semicolons, comments, or DML), a row LIMIT is injected, and a failed query gets exactly one LLM repair round with the error message.
+**SQL route** (`app/sql_agent.py`): the LLM writes SQL, but the *application* enforces the security boundary: the SQLite connection is opened `mode=ro` (read-only at the file level), only single SELECT statements pass validation (no semicolons, comments, or DML), a row LIMIT is injected, and a failed query gets exactly one LLM repair round with the error message.
 
-**Vector RAG** (`app/build_index.py`) — each school becomes one Indonesian profile card (identity, location, accreditation, size, foundation, religion, tuition) embedded with `paraphrase-multilingual-MiniLM-L12-v2` via fastembed (ONNX — no torch dependency). Contact details (phones, emails, operator names) live in the database but are deliberately excluded from embeddings.
+**Vector RAG** (`app/build_index.py`): each school becomes one Indonesian profile card (identity, location, accreditation, size, foundation, religion, tuition) embedded with `paraphrase-multilingual-MiniLM-L12-v2` via fastembed (ONNX — no torch dependency). Contact details (phones, emails, operator names) live in the database but are deliberately excluded from embeddings.
 
-**Predict route** (`app/predict_spp.py`) — wraps the CatBoost model. If a school has a recorded SPP it is returned as-is (labeled as real data); otherwise the model estimates it from the school's features and the answer says so.
+**Predict route** (`app/predict_spp.py`): wraps the CatBoost model. If a school has a recorded SPP it is returned as-is (labeled as real data); otherwise the model estimates it from the school's features and the answer says so.
 
 ---
 
@@ -84,9 +84,9 @@ Data quality is ok for open-source Indonesian data on the internet, although the
 - **Model**: CatBoostRegressor (handles the many categorical features natively), trained on log(SPP)
 - **Features**: school profile (level, accreditation, size, teachers, rooms, labs), foundation profile (grade, number of schools under it), cost signals (land price per district, land area, electricity capacity and bill, school age), plus engineered ratios (rooms-per-m², electricity-per-room, fee-per-room)
 - **Training data**: the clean merged frame of schools with known SPP (302 rows after filtering)
-- **Validation**: the full grid search with k-fold cross-validation lives in the [companion repo's `train_cv.py`](https://github.com/AKARandy/InternProject-SPP_Sekolah) (designed for Kaggle GPU); the current served configuration is a fixed, fast-train variant. Cross-validated results from the notebook runs: **MAE ≈ Rp689k ± Rp292k on 10-fold CV** — honest scale for a 300-row dataset, and usable for price-band estimates rather than exact quotes.
+- **Validation**: the full grid search with k-fold cross-validation lives in the [companion repo's `train_cv.py`](https://github.com/AKARandy/InternProject-SPP_Sekolah) (designed for Kaggle GPU); the current served configuration is a fixed, fast-train variant. Cross-validated results from the notebook runs: **MAE ≈ Rp689k ± Rp292k on 10-fold CV**, a honest scale for a 300-row dataset, and usable for price-band estimates rather than exact quotes.
 
-Trained a better model on Kaggle? Export it as `models/spp_model.pkl` in the format `{'model': ..., 'featurizer': ...}` and the app uses it with zero code changes — see `app/predict_spp.py`.
+Trained a better model on Kaggle? Export it as `models/spp_model.pkl` in the format `{'model': ..., 'featurizer': ...}` and the app uses it with zero code changes; see `app/predict_spp.py`.
 
 ---
 
@@ -146,10 +146,10 @@ The suite covers the SQL guard like a security boundary (mutation/comment/multi-
 
 ## Honest limitations
 
-- **The SPP model estimates price bands, not exact quotes** — 300 training rows is small; treat predictions as ranges (see CV MAE above).
-- **Predictions inherit scraping bias** — features come from public portal data; schools that maintain their portals look "richer" than they are.
-- **Two cities only** — the pipeline generalizes, but the vector index and DB are built from Surabaya + Sidoarjo scrapes.
-- **The router is a single LLM call** — misrouted questions fall back to semantic search rather than a correction loop.
+- **The SPP model estimates price bands, not exact quotes**,300 training rows is small; treat predictions as ranges (see CV MAE above).
+- **Predictions inherit scraping bias**, features come from public portal data; schools that maintain their portals look "richer" than they are.
+- **Two cities only**, the pipeline generalizes, but the vector index and DB are built from Surabaya + Sidoarjo scrapes.
+- **The router is a single LLM call**, misrouted questions fall back to semantic search rather than a correction loop.
 
 ## Project structure
 
