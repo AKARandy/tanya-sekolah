@@ -102,7 +102,7 @@ Captured with **no LLM API key set** — the API, chat UI, and test suite all ru
 
 ## Route examples
 
-Captured with a real LLM backend served through Google AI Studio's OpenAI-compatible endpoint (`LLM_PROVIDER=custom`, `LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/`). The semantic example below ran on **`gemini-3.6-flash`**; the SQL and prediction captures were re-taken on **`gemini-3.5-flash-lite`** on the same endpoint after `gemini-3.6-flash` hit its free-tier daily quota mid-session. The chat UI tags every answer with the route that produced it.
+Captured with a real LLM backend served through Google AI Studio's OpenAI-compatible endpoint (`LLM_PROVIDER=custom`, `LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/`). The chat UI tags every answer with the route that produced it.
 
 ### SQL route
 
@@ -122,7 +122,7 @@ POST /ask
 }
 ```
 
-Captured with `gemini-3.5-flash-lite` — the UI shows the `SQL ROUTE` badge with the generated SELECT, and the count in the answer (72) is the executed query's result row.
+The UI shows the `SQL ROUTE` badge with the generated SELECT, and the count in the answer (72) is the executed query's result row.
 
 ### Vector RAG (semantic route)
 
@@ -168,7 +168,7 @@ POST /ask
 }
 ```
 
-Captured with `gemini-3.5-flash-lite` — the `SPP PREDICTION` badge shows in the UI, and `spp_is_recorded: true` marks the Rp220,000 as recorded data rather than a CatBoost estimate.
+The `SPP PREDICTION` badge shows in the UI, and `spp_is_recorded: true` marks the Rp220,000 as recorded data rather than a CatBoost estimate.
 
 ---
 
