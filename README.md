@@ -100,9 +100,31 @@ Captured with **no LLM API key set** — the API, chat UI, and test suite all ru
 | ![Chat UI](docs/screenshots/ui.png) | **Chat UI** — the static page at `/` (`static/index.html`) where you ask questions and see which route (SQL / vector RAG / prediction) answered. |
 | ![Pytest report](docs/screenshots/report.png) | **Test suite** — 39 tests passed in 31.44 s (`pytest --html`, full self-contained report: [docs/screenshots/pytest-report.html](docs/screenshots/pytest-report.html)). Tests mock the LLM, so they need no key and no network. |
 
-### End-to-end with a live LLM
+## Route examples
 
-Captured with a real LLM backend: **`gemini-3.6-flash`** served through Google AI Studio's OpenAI-compatible endpoint (`LLM_PROVIDER=custom`, `LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/`).
+Captured with a real LLM backend served through Google AI Studio's OpenAI-compatible endpoint (`LLM_PROVIDER=custom`, `LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/`). The semantic example below ran on **`gemini-3.6-flash`**; the SQL and prediction captures were re-taken on **`gemini-3.5-flash-lite`** on the same endpoint after `gemini-3.6-flash` hit its free-tier daily quota mid-session. The chat UI tags every answer with the route that produced it.
+
+### SQL route
+
+![SQL route answer in the chat UI](docs/screenshots/ask-sql.png)
+
+```json
+POST /ask
+{"question": "Berapa banyak SMA swasta berakreditasi A di Kota Surabaya?"}
+
+200 OK
+{
+  "route": "sql",
+  "sql": "SELECT COUNT(*) AS jumlah FROM schools WHERE jenjang LIKE 'SMA%' AND status = 'SWASTA' AND akreditasi = 'A' AND kota = 'Kota Surabaya'",
+  "rows": [{"jumlah": 72}],
+  "answer": "Berdasarkan data yang tersedia, terdapat **72** SMA swasta berakreditasi A di Kota Surabaya.",
+  "note": null
+}
+```
+
+Captured with `gemini-3.5-flash-lite` — the UI shows the `SQL ROUTE` badge with the generated SELECT, and the count in the answer (72) is the executed query's result row.
+
+### Vector RAG (semantic route)
 
 ![Live LLM answer in the chat UI](docs/screenshots/ask-routed.png)
 
@@ -125,7 +147,28 @@ POST /ask
 }
 ```
 
-The `answer` field is natural-language synthesis (markdown formatting, context about the school's location, the estimated figure) — this is the LLM hop, not the keyless raw-evidence fallback.
+The `answer` field is natural-language synthesis (markdown formatting, context about the school's location, the estimated figure) — this is the LLM hop, not the keyless raw-evidence fallback. Note this is also an honest misroute example: an SPP question fell back to semantic search because the router's output wasn't usable JSON (`note: router_no_json`), exactly the single-LLM-call weakness listed under limitations below.
+
+### Prediction route
+
+![Prediction route answer in the chat UI](docs/screenshots/ask-predict.png)
+
+```json
+POST /ask
+{"question": "Berapa SPP di SMK Krian 1 Sidoarjo?"}
+
+200 OK
+{
+  "route": "predict",
+  "school": "SMK KRIAN 1 SIDOARJO",
+  "answer": "Berdasarkan data yang tersedia, SPP di SMK KRIAN 1 SIDOARJO (NPSN 20501692) tercatat sebesar Rp220.000.",
+  "spp": 220000.0,
+  "spp_is_recorded": true,
+  "note": null
+}
+```
+
+Captured with `gemini-3.5-flash-lite` — the `SPP PREDICTION` badge shows in the UI, and `spp_is_recorded: true` marks the Rp220,000 as recorded data rather than a CatBoost estimate.
 
 ---
 
