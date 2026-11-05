@@ -90,21 +90,43 @@ Trained a better model on Kaggle? Export it as `models/spp_model.pkl` in the for
 
 ---
 
-## Quickstart
+## Screenshots
+
+Captured with **no LLM API key set** — the API, chat UI, and test suite all run keylessly; the key only upgrades raw-evidence fallbacks into natural-language answers.
+
+| | |
+|---|---|
+| ![FastAPI OpenAPI docs](docs/screenshots/docs.png) | **`/docs`** — interactive OpenAPI docs for `POST /ask`, `POST /predict`, and `GET /health`, served by FastAPI at startup. |
+| ![Chat UI](docs/screenshots/ui.png) | **Chat UI** — the static page at `/` (`static/index.html`) where you ask questions and see which route (SQL / vector RAG / prediction) answered. |
+| ![Pytest report](docs/screenshots/report.png) | **Test suite** — 39 tests passed in 31.44 s (`pytest --html`, full self-contained report: [docs/screenshots/pytest-report.html](docs/screenshots/pytest-report.html)). Tests mock the LLM, so they need no key and no network. |
+
+---
+
+## Running locally
+
+Tested on Python 3.13, Windows, no Docker required.
 
 ```bash
 git clone https://github.com/AKARandy/tanya-sekolah.git && cd tanya-sekolah
+
+python -m venv .venv
+# Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env    # then paste ONE API key (see backends below)
+# 1) LLM key: copy .env.example to .env and fill in LLM_API_KEY
+#    (the app reads it via python-dotenv; see .env.example for LLM_PROVIDER and optional LLM_BASE_URL/LLM_MODEL)
+cp .env.example .env
+
+# 2) Data preparation — regenerates the gitignored artifacts (needs no key):
 python -m app.build_db            # CSVs → schools.db (2,269 schools)
-python -m app.build_index         # → chroma_db/ vector index
+python -m app.build_index         # → chroma_db/ vector index (fastembed, downloads the model once)
 python -m app.predict_spp --train # → models/spp_model.pkl (trains in seconds)
 
-uvicorn app.main:app --reload
+# 3) Serve:
+uvicorn app.main:app --reload     # UI at http://127.0.0.1:8000, API docs at /docs
 ```
 
-Open http://127.0.0.1:8000 — the chat UI shows which route (SQL / vector RAG / prediction) answered each question.
+`GET /health` reports what's ready: without a key it returns `status: ok` with the configured `llm_base_url`; every LLM hop falls back to returning raw retrieval evidence, so the app demos end-to-end even keyless.
 
 ### LLM backends (all OpenAI-compatible, switch in `.env`)
 
