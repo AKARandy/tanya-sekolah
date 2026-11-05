@@ -100,6 +100,33 @@ Captured with **no LLM API key set** — the API, chat UI, and test suite all ru
 | ![Chat UI](docs/screenshots/ui.png) | **Chat UI** — the static page at `/` (`static/index.html`) where you ask questions and see which route (SQL / vector RAG / prediction) answered. |
 | ![Pytest report](docs/screenshots/report.png) | **Test suite** — 39 tests passed in 31.44 s (`pytest --html`, full self-contained report: [docs/screenshots/pytest-report.html](docs/screenshots/pytest-report.html)). Tests mock the LLM, so they need no key and no network. |
 
+### End-to-end with a live LLM
+
+Captured with a real LLM backend: **`gemini-3.6-flash`** served through Google AI Studio's OpenAI-compatible endpoint (`LLM_PROVIDER=custom`, `LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/`).
+
+![Live LLM answer in the chat UI](docs/screenshots/ask-routed.png)
+
+Question asked in Indonesian through the chat UI; the router classified it as **semantic** (vector RAG — the `VECTOR RAG` badge), and the synthesis LLM (`gemini-3.6-flash`) turned the retrieved school profile cards into a cited Indonesian answer. The real request/response exchange over the API:
+
+```json
+POST /ask
+{"question": "Berapa perkiraan SPP di SMP Pembangunan Jaya 2?"}
+
+200 OK
+{
+  "route": "semantic",
+  "sources": [
+    {"nama": "SMP Pembangunan Jaya 2", "npsn": "60702933", "jenjang": "SMP",
+     "kecamatan": "Kec. Gedangan", "kota": "Kab. Sidoarjo"},
+    "…4 more retrieved profile cards…"
+  ],
+  "answer": "Berdasarkan data yang tersedia, perkiraan SPP dari model prediksi untuk **SMP Pembangunan Jaya 2** (NPSN: 60702933) yang berlokasi di Gedangan, Kab. Sidoarjo adalah sebesar **Rp1.000.806**.",
+  "note": "router_no_json"
+}
+```
+
+The `answer` field is natural-language synthesis (markdown formatting, context about the school's location, the estimated figure) — this is the LLM hop, not the keyless raw-evidence fallback.
+
 ---
 
 ## Running locally
