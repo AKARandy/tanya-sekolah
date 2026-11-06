@@ -126,28 +126,28 @@ The UI shows the `SQL ROUTE` badge with the generated SELECT, and the count in t
 
 ### Vector RAG (semantic route)
 
-![Live LLM answer in the chat UI](docs/screenshots/ask-routed.png)
-
-Question asked in Indonesian through the chat UI; the router classified it as **semantic** (vector RAG — the `VECTOR RAG` badge), and the synthesis LLM (`gemini-3.6-flash`) turned the retrieved school profile cards into a cited Indonesian answer. The real request/response exchange over the API:
+![Semantic route answer in the chat UI](docs/screenshots/ask-semantic.png)
 
 ```json
 POST /ask
-{"question": "Berapa perkiraan SPP di SMP Pembangunan Jaya 2?"}
+{"question": "Rekomendasi TK swasta yang bagus di Surabaya untuk anak saya?"}
 
 200 OK
 {
   "route": "semantic",
   "sources": [
-    {"nama": "SMP Pembangunan Jaya 2", "npsn": "60702933", "jenjang": "SMP",
-     "kecamatan": "Kec. Gedangan", "kota": "Kab. Sidoarjo"},
-    "…4 more retrieved profile cards…"
+    {"nama": "TK NEGERI BAHARI", "npsn": "20561973", "jenjang": "TK",
+     "kecamatan": "KEC. TANDES", "kota": "Kota Surabaya"},
+    {"nama": "TK SEKOLAH CIKAL SURABAYA", "npsn": "69867731", "jenjang": "TK",
+     "kecamatan": "KEC. SAMBI KEREK", "kota": "Kota Surabaya"},
+    "…3 more retrieved profile cards…"
   ],
-  "answer": "Berdasarkan data yang tersedia, perkiraan SPP dari model prediksi untuk **SMP Pembangunan Jaya 2** (NPSN: 60702933) yang berlokasi di Gedangan, Kab. Sidoarjo adalah sebesar **Rp1.000.806**.",
-  "note": "router_no_json"
+  "answer": "Berdasarkan data yang tersedia, berikut rekomendasi TK swasta di Surabaya yang memiliki akreditasi A: 1. TK SEKOLAH CIKAL SURABAYA (NPSN: 69867731) — Sambi Kerep, akreditasi A, 47 siswa, 2 guru… 2. TK SULUNG (NPSN: 20560573) — Bubutan, akreditasi A, 15 siswa…",
+  "note": null
 }
 ```
 
-The `answer` field is natural-language synthesis (markdown formatting, context about the school's location, the estimated figure) — this is the LLM hop, not the keyless raw-evidence fallback. Note this is also an honest misroute example: an SPP question fell back to semantic search because the router's output wasn't usable JSON (`note: router_no_json`), exactly the single-LLM-call weakness listed under limitations below.
+The question is deliberately vague ("bagus" — good) with no field to filter on: the router sends it to the vector index, five kindergarten profile cards come back from retrieval, and the LLM synthesizes them into a recommendation grounded in the retrieved data (accreditation, location, student counts). `note: null` — the router classified it cleanly on the first call.
 
 ### Prediction route
 
